@@ -59,7 +59,7 @@ export default function LoginPage() {
           </div>
 
           {/* Login Form */}
-          <div className="bg-white rounded-[2rem] p-10 shadow-2xl shadow-gray-200/50">
+          <div className="bg-white rounded-2xl p-8 shadow-soft border border-gray-100">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Error Message */}
               {error && (
@@ -71,17 +71,17 @@ export default function LoginPage() {
 
               {/* Email Field */}
               <div>
-                <label htmlFor="email" className="block text-sm font-black text-gray-900 mb-3">
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-900 mb-2">
                   Email
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full pl-14 pr-5 py-5 border-0 shadow-lg rounded-[1.5rem] focus:outline-none focus:ring-4 focus:ring-primary-100 focus:shadow-2xl transition-all duration-300"
+                    className="w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
                     placeholder="vas@email.cz"
                     required
                     disabled={loading}
@@ -91,7 +91,7 @@ export default function LoginPage() {
 
               {/* Password Field */}
               <div>
-                <label htmlFor="password" className="block text-sm font-bold text-gray-900 mb-2">
+                <label htmlFor="password" className="block text-sm font-semibold text-gray-900 mb-2">
                   Heslo
                 </label>
                 <div className="relative">
@@ -101,7 +101,7 @@ export default function LoginPage() {
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary-100 focus:border-primary-400 transition-all duration-300"
+                    className="w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
                     placeholder="••••••••"
                     required
                     disabled={loading}

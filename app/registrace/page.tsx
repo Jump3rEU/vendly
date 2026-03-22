@@ -126,7 +126,7 @@ export default function RegisterPage() {
           </div>
 
           {/* Registration Form */}
-          <div className="card-surface-hover rounded-2xl p-8 shadow-soft">
+          <div className="bg-white rounded-2xl p-8 shadow-soft border border-gray-100">
             {success ? (
               <div className="text-center py-8">
                 <div className="w-16 h-16 bg-trust-100 rounded-full flex items-center justify-center mx-auto mb-4">
