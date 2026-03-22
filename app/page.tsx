@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Shield, Lock, Users, Smartphone, Zap, CheckCircle, ArrowRight, Clock, Car, Shirt, Home, Dumbbell, Gamepad2, BookOpen, Music, Bike, MoreHorizontal, Search, TrendingUp, Star } from 'lucide-react'
+import { Shield, Lock, Users, Smartphone, Zap, CheckCircle, ArrowRight, Clock, Car, Shirt, Home, Dumbbell, Gamepad2, BookOpen, Music, Bike, MoreHorizontal, Search, TrendingUp, Star, Camera, Sparkles, BadgeCheck, Package } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import ListingCard from '@/components/ui/ListingCard'
 import { useEffect, useState, useRef } from 'react'
@@ -49,29 +49,82 @@ const categoryIcons: Record<string, { icon: any; emoji: string; color: string }>
   'Ostatní': { icon: MoreHorizontal, emoji: '📦', color: 'from-gray-500 to-gray-600' },
 }
 
+// Animated counter hook
+function useCountUp(target: number, duration = 2000) {
+  const [count, setCount] = useState(0)
+  const [started, setStarted] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started) {
+          setStarted(true)
+        }
+      },
+      { threshold: 0.5 }
+    )
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [started])
+
+  useEffect(() => {
+    if (!started || target === 0) return
+    const steps = 60
+    const stepDuration = duration / steps
+    const increment = target / steps
+    let current = 0
+    const timer = setInterval(() => {
+      current += increment
+      if (current >= target) {
+        setCount(target)
+        clearInterval(timer)
+      } else {
+        setCount(Math.floor(current))
+      }
+    }, stepDuration)
+    return () => clearInterval(timer)
+  }, [started, target, duration])
+
+  return { count, ref }
+}
+
 export default function HomePage() {
   const router = useRouter()
   const [listings, setListings] = useState<Listing[]>([])
+  const [newTodayListings, setNewTodayListings] = useState<Listing[]>([])
   const [categoryCounts, setCategoryCounts] = useState<CategoryCount[]>([])
   const [loading, setLoading] = useState(true)
   const [totalListings, setTotalListings] = useState(0)
+  const [safeTransactions, setSafeTransactions] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const { count: txCount, ref: txRef } = useCountUp(safeTransactions || 1247)
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const listingsRes = await fetch('/api/listings?limit=12')
+        const listingsRes = await fetch('/api/listings?limit=12&sortBy=newest')
         const listingsData = await listingsRes.json()
         if (listingsData.data?.listings) {
-          setListings(listingsData.data.listings)
-          setTotalListings(listingsData.data.pagination?.total || listingsData.data.listings.length)
+          const all: Listing[] = listingsData.data.listings
+          setListings(all)
+          setTotalListings(listingsData.data.pagination?.total || all.length)
+
+          // Filter listings from last 24h
+          const now = new Date()
+          const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+          const fresh = all.filter(l => new Date(l.createdAt) > oneDayAgo)
+          setNewTodayListings(fresh)
         }
 
         const statsRes = await fetch('/api/listings/stats')
         const statsData = await statsRes.json()
         if (statsData.categories) {
           setCategoryCounts(statsData.categories)
+        }
+        if (statsData.safeTransactions) {
+          setSafeTransactions(statsData.safeTransactions)
         }
       } catch (error) {
         console.error('Error fetching data:', error)
@@ -137,7 +190,7 @@ export default function HomePage() {
                 />
                 <button
                   type="submit"
-                  className="bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold px-6 py-3 rounded-xl hover:from-primary-600 hover:to-primary-700 transition-all duration-200 shadow-button-primary flex-shrink-0"
+                  className="bg-gradient-to-r from-rose-500 to-red-600 text-white font-semibold px-6 py-3 rounded-xl hover:from-rose-600 hover:to-red-700 transition-all duration-200 shadow-button-primary flex-shrink-0"
                 >
                   Hledat
                 </button>
@@ -173,6 +226,25 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Animated Trust Counter */}
+      <section ref={txRef} className="py-10 bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.08)_0%,transparent_70%)]" />
+        <div className="safe-container relative">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-white text-center">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                <Shield className="w-5 h-5" />
+              </div>
+              <span className="text-lg font-medium opacity-90">Již</span>
+            </div>
+            <span className="text-4xl md:text-5xl font-black tabular-nums">
+              {txCount.toLocaleString('cs-CZ')}
+            </span>
+            <span className="text-lg font-semibold opacity-90">bezpečných transakcí 🎉</span>
+          </div>
+        </div>
+      </section>
+
       {/* Stats Section */}
       <section className="py-12 bg-white border-b border-gray-100">
         <div className="safe-container">
@@ -180,23 +252,48 @@ export default function HomePage() {
             <StatItem
               value={totalListings > 0 ? `${totalListings.toLocaleString('cs-CZ')}+` : '100+'}
               label="Aktivních inzerátů"
-              icon={<TrendingUp className="w-5 h-5 text-primary-500" />}
+              icon={<TrendingUp className="w-5 h-5 text-rose-500" />}
             />
             <StatItem
               value="100%"
               label="Zabezpečené platby"
-              icon={<Lock className="w-5 h-5 text-trust-600" />}
+              icon={<Lock className="w-5 h-5 text-emerald-600" />}
             />
             <StatItem
               value="5%"
               label="Poplatek platformy"
-              icon={<CheckCircle className="w-5 h-5 text-primary-500" />}
+              icon={<CheckCircle className="w-5 h-5 text-rose-500" />}
             />
             <StatItem
               value="⭐ 4.8"
               label="Spokojenost uživatelů"
               icon={<Star className="w-5 h-5 text-amber-500" />}
             />
+          </div>
+        </div>
+      </section>
+
+      {/* Quick Filters Bar */}
+      <section className="py-4 bg-white border-b border-gray-100 sticky top-[72px] z-30 shadow-sm">
+        <div className="safe-container">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+            {[
+              { label: 'Vše', href: '/inzeraty' },
+              { label: '📱 Elektronika', href: '/inzeraty?kategorie=elektronika' },
+              { label: '👕 Móda', href: '/inzeraty?kategorie=m%C3%B3da' },
+              { label: '🚗 Auto-moto', href: '/inzeraty?kategorie=auto-moto' },
+              { label: '⚽ Sport', href: '/inzeraty?kategorie=sport' },
+              { label: '💰 Do 500 Kč', href: '/inzeraty?maxPrice=500' },
+              { label: '💳 Do 2000 Kč', href: '/inzeraty?maxPrice=2000' },
+            ].map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="flex-shrink-0 px-4 py-2 rounded-full bg-gray-100 hover:bg-rose-500 hover:text-white text-gray-700 text-sm font-semibold transition-all duration-200 whitespace-nowrap"
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
         </div>
       </section>
@@ -251,6 +348,61 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Nové dnes section */}
+      {(newTodayListings.length > 0 || loading) && (
+        <section className="py-12 md:py-16 bg-gradient-to-br from-rose-50 via-white to-pink-50 border-y border-rose-100/50">
+          <div className="safe-container">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-1.5 bg-gradient-to-r from-rose-500 to-pink-500 text-white px-3 py-1.5 rounded-full text-xs font-bold">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Nové dnes
+                  </div>
+                </div>
+                <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">
+                  Přidáno dnes
+                </h2>
+                <p className="text-gray-500 mt-1 text-sm">
+                  Nejčerstvější nabídky za posledních 24 hodin
+                </p>
+              </div>
+              <Link
+                href="/inzeraty?sortBy=newest"
+                className="hidden sm:flex items-center gap-2 text-rose-600 font-bold hover:text-rose-700 transition-colors group text-sm"
+              >
+                Zobrazit vše
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+
+            {loading ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="bg-gray-200 aspect-square rounded-2xl mb-3"></div>
+                    <div className="h-4 bg-gray-200 rounded-lg w-3/4 mb-2"></div>
+                    <div className="h-5 bg-gray-200 rounded-lg w-1/2"></div>
+                  </div>
+                ))}
+              </div>
+            ) : newTodayListings.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {newTodayListings.slice(0, 4).map((listing) => (
+                  <ListingCard key={listing.id} listing={listing} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-white/60 rounded-2xl border border-rose-100">
+                <div className="text-5xl mb-3">🌅</div>
+                <p className="text-gray-600 font-medium">Dnes zatím nic nového</p>
+                <p className="text-gray-400 text-sm mt-1">Zkuste to znovu za chvíli</p>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Latest Listings */}
       <section className="py-16 md:py-20 bg-white">
         <div className="safe-container">
@@ -265,7 +417,7 @@ export default function HomePage() {
             </div>
             <Link
               href="/inzeraty"
-              className="hidden sm:flex items-center gap-2 text-primary-600 font-bold hover:text-primary-700 transition-colors group"
+              className="hidden sm:flex items-center gap-2 text-rose-600 font-bold hover:text-rose-700 transition-colors group"
             >
               Zobrazit vše
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -307,7 +459,7 @@ export default function HomePage() {
             <div className="sm:hidden mt-8 text-center">
               <Link
                 href="/inzeraty"
-                className="inline-flex items-center gap-2 text-primary-600 font-bold"
+                className="inline-flex items-center gap-2 text-rose-600 font-bold"
               >
                 Zobrazit všechny inzeráty
                 <ArrowRight className="w-4 h-4" />
@@ -317,11 +469,76 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Prodej za 2 minuty section */}
+      <section className="py-16 md:py-20 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(225,29,72,0.15)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(225,29,72,0.10)_0%,transparent_60%)]" />
+
+        <div className="safe-container relative">
+          <div className="max-w-5xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <div>
+                <div className="inline-flex items-center gap-2 bg-rose-500/20 text-rose-400 border border-rose-500/30 px-4 py-2 rounded-full text-sm font-semibold mb-6">
+                  <Zap className="w-4 h-4" />
+                  Prodej za 2 minuty
+                </div>
+                <h2 className="text-3xl md:text-4xl font-black text-white mb-6 leading-tight">
+                  Vyfotit. Popsat.<br />
+                  <span className="text-rose-400">Prodáno.</span>
+                </h2>
+                <p className="text-gray-400 text-lg mb-8 leading-relaxed">
+                  Přidání inzerátu trvá méně než 2 minuty.
+                  Bez registrace poplatků, bez komplikací.
+                </p>
+                <div className="space-y-4 mb-10">
+                  {[
+                    { icon: '📸', text: 'Přidejte fotky přímo z telefonu' },
+                    { icon: '✍️', text: 'Stručný popis a nastavte cenu' },
+                    { icon: '💰', text: 'Peníze dorazí bezpečně přes escrow' },
+                  ].map((step, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-xl flex-shrink-0">
+                        {step.icon}
+                      </div>
+                      <span className="text-gray-300 font-medium">{step.text}</span>
+                    </div>
+                  ))}
+                </div>
+                <Button href="/prodat" size="lg" variant="primary">
+                  Zkusit zdarma
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </div>
+
+              {/* Social proof cards */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl p-5">
+                  <div className="text-3xl font-black text-white mb-1">2 min</div>
+                  <div className="text-gray-400 text-sm">průměrný čas přidání inzerátu</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl p-5">
+                  <div className="text-3xl font-black text-rose-400 mb-1">5%</div>
+                  <div className="text-gray-400 text-sm">poplatek pouze při prodeji</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl p-5">
+                  <div className="text-3xl font-black text-white mb-1">100%</div>
+                  <div className="text-gray-400 text-sm">ochrana escrow systémem</div>
+                </div>
+                <div className="bg-gradient-to-br from-rose-500/30 to-pink-500/20 border border-rose-500/30 rounded-2xl p-5">
+                  <div className="text-3xl font-black text-rose-300 mb-1">⭐ 4.8</div>
+                  <div className="text-gray-400 text-sm">hodnocení prodejců</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* How It Works */}
       <section className="py-16 md:py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-50/50 via-white to-primary-50/30" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary-100/25 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary-100/20 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-rose-50/50 via-white to-rose-50/30" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-rose-100/25 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-rose-100/20 rounded-full blur-3xl" />
 
         <div className="safe-container relative">
           <div className="text-center mb-12">
@@ -370,17 +587,17 @@ export default function HomePage() {
 
           <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <FeatureCard
-              icon={<Shield className="w-8 h-8 text-primary-600" />}
+              icon={<Shield className="w-8 h-8 text-rose-600" />}
               title="Escrow ochrana"
               description="Peníze jsou v bezpečí, dokud kupující nepotvrdí převzetí. Žádné podvody."
             />
             <FeatureCard
-              icon={<Users className="w-8 h-8 text-primary-600" />}
+              icon={<BadgeCheck className="w-8 h-8 text-emerald-600" />}
               title="Ověření uživatelé"
               description="Hodnocení, historie transakcí. Víte, s kým obchodujete."
             />
             <FeatureCard
-              icon={<Zap className="w-8 h-8 text-primary-600" />}
+              icon={<Zap className="w-8 h-8 text-rose-600" />}
               title="Moderní a rychlé"
               description="Čistý design, rychlé načítání, snadné ovládání na mobilu i PC."
             />
@@ -393,8 +610,8 @@ export default function HomePage() {
         <div className="safe-container">
           <div className="max-w-3xl mx-auto bg-white rounded-2xl border border-gray-100 p-6 shadow-soft">
             <div className="flex items-start gap-4">
-              <div className="p-2 bg-primary-50 rounded-xl">
-                <Shield className="w-5 h-5 text-primary-500" />
+              <div className="p-2 bg-rose-50 rounded-xl">
+                <Shield className="w-5 h-5 text-rose-500" />
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900 mb-1 text-sm">
@@ -403,7 +620,7 @@ export default function HomePage() {
                 <p className="text-xs text-gray-500 leading-relaxed">
                   Vendly propojuje kupující a prodávající, ale není prodávajícím ani kupujícím zboží.
                   Za popis položky odpovídá prodávající, za akceptaci kupující.
-                  Více informací v <Link href="/pravni/obchodni-podminky" className="text-primary-600 hover:underline font-medium">obchodních podmínkách</Link>.
+                  Více informací v <Link href="/pravni/obchodni-podminky" className="text-rose-600 hover:underline font-medium">obchodních podmínkách</Link>.
                 </p>
               </div>
             </div>
@@ -413,27 +630,38 @@ export default function HomePage() {
 
       {/* CTA Section */}
       <section className="py-16 md:py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-100/80 via-white to-primary-50/60" />
-        <div className="absolute top-0 left-1/4 w-64 h-64 bg-primary-100/30 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-primary-100/30 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-rose-100/80 via-white to-rose-50/60" />
+        <div className="absolute top-0 left-1/4 w-64 h-64 bg-rose-100/30 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-rose-100/30 rounded-full blur-3xl" />
 
         <div className="safe-container text-center relative">
-          <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4 tracking-tight">
-            Připraveni na bezpečnější obchodování?
-          </h2>
-          <p className="text-lg text-gray-600 mb-8 max-w-xl mx-auto">
-            Založte si účet zdarma a začněte prodávat nebo nakupovat ještě dnes
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button href="/registrace" size="lg" variant="primary">
-              Vytvořit účet zdarma
-            </Button>
-            <Link
-              href="/jak-to-funguje"
-              className="inline-flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-gray-700 bg-white/80 border border-white/60 hover:bg-white transition-all shadow-soft"
-            >
-              Zjistit více
-            </Link>
+          <div className="max-w-2xl mx-auto">
+            <div className="flex justify-center gap-1 mb-6">
+              {['⭐', '⭐', '⭐', '⭐', '⭐'].map((star, i) => (
+                <span key={i} className="text-2xl">{star}</span>
+              ))}
+            </div>
+            <blockquote className="text-lg text-gray-600 italic mb-6">
+              "Konečně marketplace, kde se nebojím platit předem. Escrow systém je skvělý!"
+            </blockquote>
+            <p className="text-sm text-gray-400 mb-10">— Martin K., spokojený uživatel Vendly</p>
+            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4 tracking-tight">
+              Připraveni na bezpečnější obchodování?
+            </h2>
+            <p className="text-lg text-gray-600 mb-8">
+              Založte si účet zdarma a začněte prodávat nebo nakupovat ještě dnes
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button href="/registrace" size="lg" variant="primary">
+                Vytvořit účet zdarma
+              </Button>
+              <Link
+                href="/jak-to-funguje"
+                className="inline-flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-gray-700 bg-white/80 border border-white/60 hover:bg-white transition-all shadow-soft"
+              >
+                Zjistit více
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -457,11 +685,11 @@ function StatItem({ value, label, icon }: { value: string; label: string; icon: 
 function StepCard({ number, title, description, icon }: { number: string; title: string; description: string; icon: React.ReactNode }) {
   return (
     <div className="relative bg-white rounded-2xl border border-gray-100 p-6 pt-8 group shadow-soft hover:shadow-soft-lg hover:-translate-y-1 transition-all duration-300">
-      <div className="absolute -top-4 left-6 w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-button-primary group-hover:scale-110 transition-transform">
+      <div className="absolute -top-4 left-6 w-10 h-10 bg-gradient-to-br from-rose-500 to-red-600 text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-button-primary group-hover:scale-110 transition-transform">
         {number}
       </div>
 
-      <div className="mt-2 mb-3 text-primary-500">
+      <div className="mt-2 mb-3 text-rose-500">
         {icon}
       </div>
 

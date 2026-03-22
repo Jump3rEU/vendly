@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { MapPin, BadgeCheck, TrendingDown, Truck, Package, Heart } from 'lucide-react'
+import { MapPin, BadgeCheck, TrendingDown, Truck, Heart, Sparkles } from 'lucide-react'
 
 interface ListingCardProps {
   listing: {
@@ -37,62 +37,86 @@ const conditionLabels: Record<string, string> = {
   POOR: 'Opotřebené',
 }
 
+function isNewToday(createdAt?: string): boolean {
+  if (!createdAt) return false
+  const created = new Date(createdAt)
+  const now = new Date()
+  const diffMs = now.getTime() - created.getTime()
+  return diffMs < 24 * 60 * 60 * 1000
+}
+
+function getTrustColor(score?: number): { bg: string; text: string; dot: string } {
+  if (!score) return { bg: 'bg-gray-100', text: 'text-gray-600', dot: 'bg-gray-400' }
+  if (score >= 70) return { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' }
+  if (score >= 40) return { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' }
+  return { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' }
+}
+
 // Premium listing card with improved visual hierarchy and trust signals
 export default function ListingCard({ listing }: ListingCardProps) {
   const imageUrl = listing.thumbnailUrl || listing.images?.[0] || listing.image
   const price = typeof listing.price === 'string' ? parseFloat(listing.price) : listing.price
   const isVerified = listing.seller?.idVerified || listing.sellerVerified
   const hasDelivery = listing.deliveryMethods && listing.deliveryMethods.length > 0
+  const newToday = isNewToday(listing.createdAt)
+  const trustColors = getTrustColor(listing.seller?.trustScore)
 
   return (
-    <Link 
+    <Link
       href={`/inzeraty/${listing.slug || listing.id}`}
-      className="group block bg-white rounded-[2rem] border-0 overflow-hidden relative shadow-lg hover:shadow-2xl hover:shadow-primary-100/40 hover:-translate-y-3 transition-all duration-500"
+      className="group block bg-white rounded-2xl border border-gray-100 overflow-hidden relative shadow-soft hover:shadow-glass hover:border-rose-100 hover:-translate-y-2 transition-all duration-300"
     >
-      {/* Image with subtle overlay */}
+      {/* Image */}
       <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden relative">
         {imageUrl ? (
           <Image
             src={imageUrl}
             alt={listing.title}
             fill
-            className="object-cover group-hover:scale-110 transition-transform duration-700"
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <span className="text-5xl">📷</span>
         )}
-        
+
         {/* Gradient overlay on hover */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-        
-        {/* Top badges */}
-        <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2 z-10">
-          {/* Condition badge */}
-          {listing.condition && (
-            <div className="bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-full text-xs font-bold text-gray-900 shadow-xl border border-white/50">
-              {conditionLabels[listing.condition] || listing.condition}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+        {/* Top-left badges row */}
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
+          {/* Nové dnes badge */}
+          {newToday && (
+            <div className="bg-gradient-to-r from-rose-500 to-pink-500 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
+              <Sparkles className="w-3 h-3" />
+              <span>Nové dnes</span>
             </div>
           )}
-          
-          {/* Verified badge */}
-          {isVerified && (
-            <div className="bg-gradient-to-br from-trust-500 to-trust-600 text-white px-3.5 py-2 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-xl ml-auto">
-              <BadgeCheck className="w-4 h-4" />
-              <span>Ověřeno</span>
+          {/* Condition badge */}
+          {listing.condition && (
+            <div className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-bold text-gray-900 shadow-md border border-white/50">
+              {conditionLabels[listing.condition] || listing.condition}
             </div>
           )}
         </div>
 
-        {/* Bottom badges - Features */}
-        <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2">
+        {/* Top-right: verified badge */}
+        {isVerified && (
+          <div className="absolute top-3 right-3 z-10 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
+            <BadgeCheck className="w-3.5 h-3.5" />
+            <span>Ověřeno</span>
+          </div>
+        )}
+
+        {/* Bottom badges */}
+        <div className="absolute bottom-3 left-3 right-3 flex items-center gap-1.5 flex-wrap">
           {listing.allowsOffers && (
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-xl">
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
               <TrendingDown className="w-3.5 h-3.5" />
-              <span>Nabídky</span>
+              <span>Cena dohodou</span>
             </div>
           )}
           {hasDelivery && (
-            <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-xl">
+            <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
               <Truck className="w-3.5 h-3.5" />
               <span>Doprava</span>
             </div>
@@ -108,31 +132,26 @@ export default function ListingCard({ listing }: ListingCardProps) {
         )}
       </div>
 
-      {/* Content with better spacing */}
-      <div className="p-6">
-        {/* Title with improved readability */}
-        <h3 className="font-black text-gray-900 mb-3 line-clamp-2 text-lg group-hover:text-primary-700 transition-colors duration-500 leading-snug">
+      {/* Content */}
+      <div className="p-4">
+        <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 text-sm group-hover:text-rose-600 transition-colors duration-300 leading-snug">
           {listing.title}
         </h3>
-        
-        {/* Meta info with better visual separation */}
-        <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-          <MapPin className="w-4 h-4 flex-shrink-0 text-gray-400" />
+
+        <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-3">
+          <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
           <span className="truncate">{listing.location}</span>
         </div>
 
-        {/* Price - visually dominant with glow effect on hover */}
-        <div className="flex items-center justify-between">
-          <div className="relative">
-            <div className="text-2xl font-bold text-primary-600 tracking-tight group-hover:text-primary-700 transition-colors duration-500">
-              {price.toLocaleString('cs-CZ')} Kč
-            </div>
-            {/* Price underline effect on hover */}
-            <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-primary-600 to-primary-700 group-hover:w-full transition-all duration-500"></div>
+        {/* Price + Trust Score */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xl font-black text-rose-600 tracking-tight">
+            {price.toLocaleString('cs-CZ')} Kč
           </div>
-          {listing.seller && listing.seller.trustScore && (
-            <div className="text-sm font-semibold text-amber-600 flex items-center gap-1 bg-gradient-to-br from-amber-50 to-amber-100 px-2.5 py-1.5 rounded-lg shadow-sm">
-              ⭐ {(listing.seller.trustScore / 20).toFixed(1)}
+          {listing.seller?.trustScore !== undefined && (
+            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold ${trustColors.bg} ${trustColors.text}`}>
+              <div className={`w-2 h-2 rounded-full ${trustColors.dot}`} />
+              {(listing.seller.trustScore / 20).toFixed(1)}
             </div>
           )}
         </div>

@@ -8,17 +8,23 @@ import Button from '@/components/ui/Button'
 import LikeButton from '@/components/LikeButton'
 
 const categories = [
-  'Vše',
-  'Auto-moto',
-  'Elektronika',
-  'Móda',
-  'Dům a zahrada',
-  'Sport',
-  'Hračky a hry',
-  'Knihy a časopisy',
-  'Hudba',
-  'Cyklo',
-  'Ostatní',
+  { label: 'Vše', value: '' },
+  { label: '📱 Elektronika', value: 'Elektronika' },
+  { label: '👕 Móda', value: 'Móda' },
+  { label: '🚗 Auto-moto', value: 'Auto-moto' },
+  { label: '🏠 Dům a zahrada', value: 'Dům a zahrada' },
+  { label: '⚽ Sport', value: 'Sport' },
+  { label: '🎮 Hračky a hry', value: 'Hračky a hry' },
+  { label: '📚 Knihy', value: 'Knihy a časopisy' },
+  { label: '🎸 Hudba', value: 'Hudba' },
+  { label: '🚴 Cyklo', value: 'Cyklo' },
+  { label: '📦 Ostatní', value: 'Ostatní' },
+]
+
+const priceFilters = [
+  { label: '💰 Do 500 Kč', maxPrice: '500' },
+  { label: '💳 Do 2 000 Kč', maxPrice: '2000' },
+  { label: '🏷️ Do 10 000 Kč', maxPrice: '10000' },
 ]
 
 const sortOptions = [
@@ -95,14 +101,18 @@ function ListingsPageContent() {
     fetchListings()
   }
 
-  const handleCategoryClick = (category: string) => {
-    const newCategory = category === 'Vše' ? '' : category
-    setFilters({ ...filters, category: newCategory })
+  const handleCategoryClick = (value: string) => {
+    setFilters({ ...filters, category: value })
+  }
+
+  const handlePriceFilter = (maxPrice: string) => {
+    const newMax = filters.maxPrice === maxPrice ? '' : maxPrice
+    setFilters({ ...filters, maxPrice: newMax })
   }
 
   useEffect(() => {
     fetchListings()
-  }, [filters.category, filters.sort])
+  }, [filters.category, filters.sort, filters.maxPrice])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -184,21 +194,40 @@ function ListingsPageContent() {
         </div>
       </div>
 
-      {/* Categories */}
+      {/* Quick Filters Bar */}
       <div className="bg-gradient-to-r from-white via-rose-50/30 to-white backdrop-blur-sm border-b border-rose-100/50 sticky top-[72px] z-40 shadow-sm">
         <div className="safe-container">
-          <div className="flex gap-2 overflow-x-auto py-4 scrollbar-hide">
+          <div className="flex gap-2 overflow-x-auto py-3 scrollbar-hide">
+            {/* Category pills */}
             {categories.map((cat) => (
               <button
-                key={cat}
-                onClick={() => handleCategoryClick(cat)}
-                className={`px-5 py-2.5 rounded-xl whitespace-nowrap transition-all font-medium text-sm ${
-                  (cat === 'Vše' && !filters.category) || filters.category === cat
+                key={cat.value}
+                onClick={() => handleCategoryClick(cat.value)}
+                className={`px-4 py-2 rounded-full whitespace-nowrap transition-all font-semibold text-sm flex-shrink-0 ${
+                  filters.category === cat.value
                     ? 'bg-gradient-to-r from-rose-500 to-red-500 text-white shadow-button-primary'
                     : 'bg-white text-gray-600 hover:bg-rose-50 hover:text-rose-700 border border-gray-100 hover:border-rose-200'
                 }`}
               >
-                {cat}
+                {cat.label}
+              </button>
+            ))}
+
+            {/* Divider */}
+            <div className="w-px bg-gray-200 flex-shrink-0 my-1" />
+
+            {/* Price filter pills */}
+            {priceFilters.map((pf) => (
+              <button
+                key={pf.maxPrice}
+                onClick={() => handlePriceFilter(pf.maxPrice)}
+                className={`px-4 py-2 rounded-full whitespace-nowrap transition-all font-semibold text-sm flex-shrink-0 ${
+                  filters.maxPrice === pf.maxPrice
+                    ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg'
+                    : 'bg-white text-gray-600 hover:bg-emerald-50 hover:text-emerald-700 border border-gray-100 hover:border-emerald-200'
+                }`}
+              >
+                {pf.label}
               </button>
             ))}
           </div>
@@ -403,15 +432,16 @@ function ListingsPageContent() {
 
             {/* Empty State */}
             {!loading && listings.length === 0 && (
-              <div className="text-center py-20">
-                <div className="w-24 h-24 backdrop-blur-md bg-white/70 border border-white/40 rounded-full flex items-center justify-center mx-auto mb-6 shadow-glass">
-                  <Search className="w-12 h-12 text-gray-400" />
-                </div>
+              <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-soft">
+                <div className="text-7xl mb-6">🔍</div>
                 <h3 className="text-2xl font-black text-gray-900 mb-3">
-                  Žádné výsledky
+                  Nic jsme nenašli
                 </h3>
-                <p className="text-gray-600 mb-8 text-lg">
-                  Zkuste změnit vyhledávací kritéria
+                <p className="text-gray-500 mb-2 text-lg max-w-md mx-auto">
+                  Pro tuto kombinaci filtrů není k dispozici žádný inzerát.
+                </p>
+                <p className="text-gray-400 text-sm mb-8">
+                  Zkuste upravit nebo smazat filtry
                 </p>
                 <Button
                   onClick={() => {
@@ -426,9 +456,9 @@ function ListingsPageContent() {
                     })
                     fetchListings()
                   }}
-                  variant="secondary"
+                  variant="primary"
                 >
-                  Vymazat filtry
+                  Zobrazit vše
                 </Button>
               </div>
             )}
