@@ -35,6 +35,18 @@ interface CategoryCount {
   count: number
 }
 
+const MOCK_LISTINGS: Listing[] = [
+  { id: 'm1', slug: 'iphone-13-pro-256gb', title: 'iPhone 13 Pro 256GB – skvělý stav', price: 15990, location: 'Praha 2', images: ['https://images.unsplash.com/photo-1632661674596-df8be070a5c5?w=400&q=80'], condition: 'VERY_GOOD', allowsOffers: true, seller: { name: 'Martin N.', trustScore: 95, idVerified: true }, createdAt: new Date().toISOString(), category: 'Elektronika' },
+  { id: 'm2', slug: 'trek-marlin-7-2022', title: 'Trek Marlin 7 2022 – vel. L', price: 8500, location: 'Brno-střed', images: ['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80'], condition: 'GOOD', allowsOffers: true, seller: { name: 'Jana K.', trustScore: 88, idVerified: false }, createdAt: new Date().toISOString(), category: 'Cyklo' },
+  { id: 'm3', slug: 'sony-playstation-5', title: 'Sony PlayStation 5 + 2 ovladače', price: 11000, location: 'Ostrava', images: ['https://images.unsplash.com/photo-1607853202273-797f1c22a38e?w=400&q=80'], condition: 'GOOD', allowsOffers: false, seller: { name: 'Petr S.', trustScore: 72 }, createdAt: new Date(Date.now() - 3600000).toISOString(), category: 'Elektronika' },
+  { id: 'm4', slug: 'patagonia-nano-puff', title: 'Zimní bunda Patagonia Nano Puff – M', price: 2200, location: 'Praha 5', images: ['https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=400&q=80'], condition: 'VERY_GOOD', allowsOffers: true, seller: { name: 'Martin N.', trustScore: 95, idVerified: true }, createdAt: new Date(Date.now() - 7200000).toISOString(), category: 'Móda' },
+  { id: 'm5', slug: 'macbook-air-m2', title: 'MacBook Air M2 – 8/256GB', price: 28500, location: 'Praha 1', images: ['https://images.unsplash.com/photo-1611186871525-c5edd9c7bbad?w=400&q=80'], condition: 'LIKE_NEW', allowsOffers: true, seller: { name: 'Jana K.', trustScore: 88, idVerified: false }, createdAt: new Date(Date.now() - 10800000).toISOString(), category: 'Elektronika' },
+  { id: 'm6', slug: 'ikea-kivik-rohova', title: 'Rohová sedačka IKEA KIVIK – šedá', price: 4900, location: 'Plzeň', images: ['https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=80'], condition: 'GOOD', allowsOffers: true, seller: { name: 'Petr S.', trustScore: 72 }, createdAt: new Date(Date.now() - 86400000).toISOString(), category: 'Dům a zahrada' },
+  { id: 'm7', slug: 'nike-air-max-90', title: 'Nike Air Max 90 – vel. 42, nové', price: 1800, location: 'Brno', images: ['https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80'], condition: 'NEW', allowsOffers: false, seller: { name: 'Martin N.', trustScore: 95, idVerified: true }, createdAt: new Date(Date.now() - 43200000).toISOString(), category: 'Móda' },
+  { id: 'm8', slug: 'xiaomi-robot-vacuum', title: 'Xiaomi Robot Vacuum X10+ – robot vysavač', price: 3200, location: 'Praha 3', images: ['https://images.unsplash.com/photo-1589802829985-817e51171b92?w=400&q=80'], condition: 'GOOD', allowsOffers: true, seller: { name: 'Jana K.', trustScore: 88, idVerified: false }, createdAt: new Date(Date.now() - 14400000).toISOString(), category: 'Dům a zahrada' },
+]
+
+
 // Category configuration matching the sell page
 const categoryIcons: Record<string, { icon: any; emoji: string; color: string }> = {
   'Auto-moto': { icon: Car, emoji: '🚗', color: 'from-blue-500 to-blue-600' },
@@ -106,7 +118,7 @@ export default function HomePage() {
       try {
         const listingsRes = await fetch('/api/listings?limit=12&sortBy=newest')
         const listingsData = await listingsRes.json()
-        if (listingsData.data?.listings) {
+        if (listingsData.data?.listings && listingsData.data.listings.length > 0) {
           const all: Listing[] = listingsData.data.listings
           setListings(all)
           setTotalListings(listingsData.data.pagination?.total || all.length)
@@ -126,8 +138,6 @@ export default function HomePage() {
         if (statsData.safeTransactions) {
           setSafeTransactions(statsData.safeTransactions)
         }
-      } catch (error) {
-        console.error('Error fetching data:', error)
       } finally {
         setLoading(false)
       }
@@ -711,3 +721,4 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode; titl
     </div>
   )
 }
+
