@@ -1,0 +1,171 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-gray-200;
+  }
+  
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+  }
+
+  /* Stronger typography hierarchy */
+  h1 {
+    @apply tracking-tight;
+    line-height: 1.1;
+  }
+  
+  h2 {
+    @apply tracking-tight;
+    line-height: 1.2;
+  }
+  
+  h3 {
+    line-height: 1.3;
+  }
+  
+  p {
+    line-height: 1.65;
+  }
+
+  /* Respekt pro prefers-reduced-motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Focus styles pro přístupnost - premium feel */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-white;
+  }
+
+  /* Safe area containers for mobile with bottom nav */
+  .safe-container-mobile {
+    @apply px-4 sm:px-6;
+  }
+  
+  /* Safe area spacing for iPhone notch and bottom nav */
+  .pb-safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+  }
+  
+  .pt-safe-top {
+    padding-top: max(env(safe-area-inset-top), 1rem);
+  }
+  
+  .h-safe-bottom {
+    height: env(safe-area-inset-bottom);
+  }
+
+  /* Touch target minimum 44px */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Container s safe area a better spacing */
+  .safe-container {
+    @apply px-4 md:px-6 lg:px-8 max-w-7xl mx-auto;
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+  
+  /* Premium card surface */
+  .card-surface {
+    @apply bg-white rounded-xl border border-gray-200 shadow-soft;
+  }
+  
+  .card-surface-hover {
+    @apply card-surface transition-all duration-200 hover:shadow-soft-lg hover:border-gray-300 hover:-translate-y-0.5;
+  }
+}
+
+@layer utilities {
+  /* Smooth transitions - Tugedr style with longer durations */
+  .transition-micro {
+    @apply transition-all duration-300 ease-out;
+  }
+  
+  .transition-smooth {
+    @apply transition-all duration-500 ease-in-out;
+  }
+  
+  /* Hide scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Glassmorphism - red/rose/crimson gradient */
+  .glass-card {
+    @apply backdrop-blur-xl border border-white/40 rounded-[1.5rem];
+    background: linear-gradient(135deg, rgba(254, 226, 226, 0.95) 0%, rgba(255, 241, 242, 0.9) 50%, rgba(254, 205, 211, 0.95) 100%);
+    box-shadow: 0 8px 32px rgba(244, 63, 94, 0.15);
+  }
+  
+  .glass-card-white {
+    @apply backdrop-blur-xl bg-white/90 border border-white/60 rounded-[1.5rem];
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+  }
+  
+  .glass-card-hover:hover {
+    box-shadow: 0 12px 40px rgba(244, 63, 94, 0.2);
+    transform: translateY(-2px);
+  }
+  
+  .glass-subtle {
+    @apply bg-white/80 backdrop-blur-sm;
+  }
+  
+  /* Text gradient for headings - red/rose theme */
+  .text-gradient {
+    @apply bg-gradient-to-r from-rose-600 via-red-500 to-rose-600 bg-clip-text text-transparent;
+  }
+  
+  .text-gradient-animated {
+    @apply bg-gradient-to-r from-rose-600 via-red-500 to-rose-600 bg-clip-text text-transparent;
+    background-size: 200% 200%;
+    animation: gradient 3s ease infinite;
+  }
+
+  @keyframes gradient {
+    0%, 100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+  
+  /* Hero gradient background - red/rose */
+  .hero-gradient {
+    background: linear-gradient(135deg, #fff1f2 0%, #ffffff 40%, #ffe4e6 70%, #fff1f2 100%);
+  }
+  
+  /* Decorative blobs */
+  .blob-red {
+    background: radial-gradient(circle, rgba(244, 63, 94, 0.2) 0%, transparent 70%);
+  }
+  
+  .blob-rose {
+    background: radial-gradient(circle, rgba(251, 113, 133, 0.18) 0%, transparent 70%);
+  }
+  
+  .blob-crimson {
+    background: radial-gradient(circle, rgba(225, 29, 72, 0.12) 0%, transparent 70%);
+  }
+}

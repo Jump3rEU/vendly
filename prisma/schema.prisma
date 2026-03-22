@@ -1,0 +1,682 @@
+// Vendly Marketplace - Production Database Schema
+// Complete schema for escrow marketplace with trust & safety features
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// USER MANAGEMENT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+enum UserRole {
+  USER
+  SELLER
+  ADMIN
+  SUSPENDED
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+  BANNED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  password      String
+  name          String?
+  nickname      String?   @unique
+  avatar        String?
+  phone         String?
+
+  role   UserRole      @default(USER)
+  status AccountStatus @default(ACTIVE)
+
+  // Trust & reputation
+  trustScore     Float @default(0)
+  totalSales     Int   @default(0)
+  totalPurchases Int   @default(0)
+
+  // Verification
+  idVerified    Boolean @default(false)
+  phoneVerified Boolean @default(false)
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  // Relations
+  listings              Listing[]
+  orders                Order[]         @relation("BuyerOrders")
+  sales                 Order[]         @relation("SellerOrders")
+  reviews               Review[]        @relation("ReviewsReceived")
+  reviewsGiven          Review[]        @relation("ReviewsGiven")
+  messages              Message[]
+  conversationsAsP1     Conversation[]  @relation("Participant1")
+  conversationsAsP2     Conversation[]  @relation("Participant2")
+  offersAsBuyer         Offer[]         @relation("OffersAsBuyer")
+  offersAsSeller        Offer[]         @relation("OffersAsSeller")
+  likes                 Like[]
+  reports               Report[]        @relation("ReportsCreated")
+  reportedIn            Report[]        @relation("ReportsAgainst")
+  disputes              Dispute[]
+  adminActions          AdminAction[]
+  passwordResets        PasswordReset[]
+
+  @@index([email])
+  @@index([nickname])
+  @@index([role, status])
+  @@map("users")
+}
+
+// Password Reset Tokens
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_resets")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// LISTINGS & MARKETPLACE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  SOLD
+  REMOVED
+  SUSPENDED
+  RESERVED
+}
+
+enum ListingCondition {
+  NEW
+  LIKE_NEW
+  GOOD
+  FAIR
+  POOR
+}
+
+model Listing {
+  id String @id @default(cuid())
+
+  // Basic info
+  title       String
+  slug        String?  @unique
+  description String
+  category    String
+  condition   ListingCondition
+
+  // Pricing
+  price         Decimal  @db.Decimal(10, 2)
+  originalPrice Decimal? @db.Decimal(10, 2)
+
+  // Media
+  images       String[]
+  thumbnailUrl String?
+
+  // Location
+  location  String
+  latitude  Float?
+  longitude Float?
+
+  // Delivery options
+  deliveryMethods  String[]  @default([]) // ["PERSONAL", "POST", "ZASILKOVNA", "COURIER"]
+  shippingPrice    Decimal?  @db.Decimal(10, 2)
+  allowsOffers     Boolean   @default(true)
+  
+  // Status
+  status ListingStatus @default(DRAFT)
+  views  Int           @default(0)
+
+  // Seller
+  sellerId String
+  seller   User   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  soldAt    DateTime?
+
+  // Relations
+  orders        Order[]
+  conversations Conversation[]
+  offers        Offer[]
+  likes         Like[]
+  reports       Report[]
+
+  @@index([sellerId])
+  @@index([slug])
+  @@index([category, status])
+  @@index([status, createdAt])
+  @@index([price])
+  @@map("listings")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ORDERS & ESCROW SYSTEM
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAYMENT_HELD // Escrow active
+  AWAITING_SHIPMENT
+  SHIPPED
+  DELIVERED
+  COMPLETED // Payment released to seller
+  CANCELLED
+  DISPUTED
+  REFUNDED
+}
+
+model Order {
+  id          String @id @default(cuid())
+  orderNumber String @unique
+
+  // Parties
+  buyerId String
+  buyer   User   @relation("BuyerOrders", fields: [buyerId], references: [id])
+
+  sellerId String
+  seller   User   @relation("SellerOrders", fields: [sellerId], references: [id])
+
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id])
+
+  // Pricing
+  itemPrice   Decimal @db.Decimal(10, 2)
+  platformFee Decimal @db.Decimal(10, 2)
+  totalAmount Decimal @db.Decimal(10, 2)
+
+  // Status
+  status OrderStatus @default(PENDING_PAYMENT)
+
+  // Escrow tracking
+  paymentHeldAt     DateTime?
+  expectedReleaseAt DateTime?
+  paymentReleasedAt DateTime?
+
+  // Delivery tracking
+  trackingNumber String?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+
+  // Confirmation
+  buyerConfirmedAt DateTime?
+  autoReleaseAt    DateTime? // Auto-release if no dispute after X days
+
+  // Order completion
+  completedAt DateTime?
+  cancelledAt DateTime?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  payment       Payment?
+  dispute       Dispute?
+  review        Review?
+  conversations Conversation[]
+
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PAYMENTS & FINANCIAL
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  HELD // In escrow
+  RELEASED // To seller
+  REFUNDED
+  FAILED
+  CAPTURED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentMethod {
+  STRIPE_CARD
+  STRIPE_BANK
+  PAYPAL
+}
+
+model Payment {
+  id String @id @default(cuid())
+
+  // Order reference
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  // Amount
+  amount   Decimal @db.Decimal(10, 2)
+  currency String  @default("CZK")
+
+  // Status
+  status PaymentStatus @default(PENDING)
+  method PaymentMethod
+
+  // Stripe integration
+  stripePaymentIntentId String? @unique
+  stripeChargeId        String?
+  stripeRefundId        String?
+
+  // Escrow dates
+  heldAt     DateTime?
+  releasedAt DateTime?
+  refundedAt DateTime?
+
+  // Metadata
+  metadata Json?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([stripePaymentIntentId])
+  @@index([status])
+  @@map("payments")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// REVIEWS & RATINGS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+model Review {
+  id String @id @default(cuid())
+
+  // Order reference
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  // Parties (buyer reviews seller)
+  reviewerId String
+  reviewer   User   @relation("ReviewsGiven", fields: [reviewerId], references: [id])
+
+  reviewedId String
+  reviewed   User   @relation("ReviewsReceived", fields: [reviewedId], references: [id])
+
+  // Rating & content
+  rating  Int // 1-5 stars
+  comment String?
+
+  // Moderation
+  reported Boolean @default(false)
+  hidden   Boolean @default(false)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reviewedId])
+  @@index([rating])
+  @@map("reviews")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MESSAGING SYSTEM
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+model Conversation {
+  id String @id @default(cuid())
+
+  // Participants
+  participant1Id String
+  participant1   User    @relation("Participant1", fields: [participant1Id], references: [id], onDelete: Cascade)
+  
+  participant2Id String
+  participant2   User    @relation("Participant2", fields: [participant2Id], references: [id], onDelete: Cascade)
+
+  // Optional listing context
+  listingId String?
+  listing   Listing? @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  // Optional order context
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  // Messages
+  messages Message[]
+
+  // Last activity
+  lastMessageAt DateTime @default(now())
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([participant1Id, participant2Id, listingId])
+  @@index([participant1Id])
+  @@index([participant2Id])
+  @@index([listingId])
+  @@index([orderId])
+  @@index([lastMessageAt])
+  @@map("conversations")
+}
+
+model Message {
+  id String @id @default(cuid())
+
+  // Conversation
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Sender
+  senderId String
+  sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  // Content
+  content   String
+  type      String   @default("TEXT") // TEXT, OFFER, SYSTEM
+  read      Boolean  @default(false)
+  readAt    DateTime?
+
+  // Optional offer reference
+  offerId String?
+  offer   Offer?  @relation(fields: [offerId], references: [id], onDelete: SetNull)
+
+  // Reports
+  reports Report[]
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@index([read])
+  @@map("messages")
+}
+
+model Offer {
+  id String @id @default(cuid())
+
+  // Listing
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  // Buyer who makes the offer
+  buyerId String
+  buyer   User   @relation("OffersAsBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+
+  // Seller who receives the offer
+  sellerId String
+  seller   User   @relation("OffersAsSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  // Offer details
+  offerPrice Decimal  @db.Decimal(10, 2)
+  message    String?
+  status     OfferStatus @default(PENDING)
+
+  // Expiration
+  expiresAt DateTime?
+
+  // Response
+  responseMessage String?
+  respondedAt     DateTime?
+
+  // Related message
+  messages Message[]
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listingId])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+  @@map("offers")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// USER INTERACTIONS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+model Like {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, listingId])
+  @@index([userId])
+  @@index([listingId])
+  @@map("likes")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// TRUST & SAFETY
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+enum ReportReason {
+  SCAM
+  FAKE_LISTING
+  INAPPROPRIATE_CONTENT
+  PROHIBITED_ITEM
+  HARASSMENT
+  FRAUD
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+model Report {
+  id String @id @default(cuid())
+
+  // Reporter
+  reporterId String
+  reporter   User   @relation("ReportsCreated", fields: [reporterId], references: [id])
+
+  // Reported entity
+  reportedUserId String?
+  reportedUser   User?   @relation("ReportsAgainst", fields: [reportedUserId], references: [id])
+
+  reportedListingId String?
+  reportedListing   Listing? @relation(fields: [reportedListingId], references: [id])
+
+  reportedMessageId String?
+  reportedMessage   Message? @relation(fields: [reportedMessageId], references: [id])
+
+  // Report details
+  reason      ReportReason
+  description String
+  status      ReportStatus @default(PENDING)
+
+  // Resolution
+  reviewedBy String?
+  resolution String?
+  resolvedAt DateTime?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([reportedUserId])
+  @@map("reports")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DISPUTE RESOLUTION
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+enum DisputeReason {
+  ITEM_NOT_RECEIVED
+  ITEM_NOT_AS_DESCRIBED
+  DEFECTIVE_ITEM
+  WRONG_ITEM
+  SELLER_NOT_RESPONDING
+  BUYER_NOT_RESPONDING
+  OTHER
+}
+
+enum DisputeStatus {
+  OPEN
+  INVESTIGATING
+  AWAITING_BUYER_RESPONSE
+  AWAITING_SELLER_RESPONSE
+  RESOLVED_REFUND
+  RESOLVED_PARTIAL_REFUND
+  RESOLVED_NO_REFUND
+  CLOSED
+}
+
+model Dispute {
+  id String @id @default(cuid())
+
+  // Order reference
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  // Initiator (usually buyer)
+  initiatorId String
+  initiator   User   @relation(fields: [initiatorId], references: [id])
+
+  // Details
+  reason      DisputeReason
+  description String
+  evidence    String[] // URLs to uploaded evidence
+
+  // Status
+  status DisputeStatus @default(OPEN)
+
+  // Resolution
+  adminNotes   String?
+  resolution   String?
+  refundAmount Decimal?  @db.Decimal(10, 2)
+  resolvedAt   DateTime?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([orderId])
+  @@map("disputes")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ADMIN & MODERATION
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+enum AdminActionType {
+  SUSPEND_USER
+  BAN_USER
+  REMOVE_LISTING
+  RESOLVE_DISPUTE
+  MANUAL_REFUND
+  VERIFY_USER
+  WARNING_ISSUED
+  PAYMENT_HELD
+  PAYMENT_CAPTURED
+  PAYMENT_RELEASED
+  PAYMENT_REFUNDED
+  ANALYZE_LISTING
+  UNSUSPEND_USER
+  ORDER_CANCELLED
+  ORDER_CONFIRMED
+}
+
+model AdminAction {
+  id String @id @default(cuid())
+
+  // Admin who performed action
+  adminId String
+  admin   User   @relation(fields: [adminId], references: [id])
+
+  // Action details
+  actionType      AdminActionType
+  targetUserId    String?
+  targetListingId String?
+  targetOrderId   String?
+
+  // Reason & notes
+  reason String
+  notes  String?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  @@index([adminId])
+  @@index([actionType])
+  @@map("admin_actions")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AI & ANALYTICS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+enum InsightType {
+  FRAUD_DETECTION
+  PRICE_RECOMMENDATION
+  CONTENT_MODERATION
+  USER_RISK_SCORE
+}
+
+model AIInsight {
+  id String @id @default(cuid())
+
+  type       InsightType
+  entityType String // "user", "listing", "order"
+  entityId   String
+
+  // Insight data
+  score      Float?
+  confidence Float
+  data       Json
+
+  // Action taken
+  actionTaken String?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([type])
+  @@map("ai_insights")
+}
