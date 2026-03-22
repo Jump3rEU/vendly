@@ -46,7 +46,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
 
   return (
     <Link 
-      href={`/inzerat/${listing.slug || listing.id}`}
+      href={`/inzeraty/${listing.slug || listing.id}`}
       className="group block bg-white rounded-[2rem] border-0 overflow-hidden relative shadow-lg hover:shadow-2xl hover:shadow-primary-100/40 hover:-translate-y-3 transition-all duration-500"
     >
       {/* Image with subtle overlay */}

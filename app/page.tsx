@@ -47,9 +47,9 @@ export default function HomePage() {
         // Fetch listings
         const listingsRes = await fetch('/api/listings?limit=12')
         const listingsData = await listingsRes.json()
-        if (listingsData.listings) {
-          setListings(listingsData.listings)
-          setTotalListings(listingsData.total || listingsData.listings.length)
+        if (listingsData.data?.listings) {
+          setListings(listingsData.data.listings)
+          setTotalListings(listingsData.data.pagination?.total || listingsData.data.listings.length)
         }
 
         // Fetch category counts
@@ -385,7 +385,7 @@ function ListingCard({ listing }: { listing: Listing }) {
   
   return (
     <Link 
-      href={`/inzerat/${listing.id}`}
+      href={`/inzeraty/${listing.id}`}
       className="group block"
     >
       <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 mb-3 shadow-soft group-hover:shadow-soft-lg group-hover:-translate-y-1 transition-all duration-300">

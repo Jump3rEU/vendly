@@ -13,6 +13,7 @@ declare module 'next-auth' {
       id: string
       email: string
       name?: string | null
+      nickname?: string | null
       role: UserRole
       status: AccountStatus
     }

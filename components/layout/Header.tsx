@@ -174,7 +174,7 @@ export default function Header() {
                           Nastavení
                         </Link>
 
-                        {(session.user as any)?.role === 'ADMIN' && (
+                        {session.user?.role === 'ADMIN' && (
                           <Link 
                             href="/admin"
                             onClick={() => setUserMenuOpen(false)}
@@ -259,7 +259,7 @@ export default function Header() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Hledat inzeráty..."
-                  className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+                  className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-rose-300 focus:ring-2 focus:ring-rose-100 transition-all text-sm"
                 />
               </div>
             </form>
@@ -363,7 +363,7 @@ export default function Header() {
                   </Link>
                   <Link 
                     href="/registrace" 
-                    className="px-6 py-3 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-all focus-ring text-center font-medium"
+                    className="px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 rounded-lg transition-all focus-ring text-center font-medium"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Registrovat se

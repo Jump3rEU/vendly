@@ -72,14 +72,15 @@ function ListingsPageContent() {
       const params = new URLSearchParams()
       Object.entries(filters).forEach(([key, value]) => {
         if (value && value !== 'Vše') {
-          params.append(key, value)
+          // API expects 'sortBy' not 'sort'
+          params.append(key === 'sort' ? 'sortBy' : key, value)
         }
       })
 
       const response = await fetch(`/api/listings?${params.toString()}`)
       const data = await response.json()
 
-      if (response.ok) {
+      if (response.ok && data.data?.listings) {
         setListings(data.data.listings)
       }
     } catch (error) {
