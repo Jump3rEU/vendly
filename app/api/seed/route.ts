@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
 // Secret key to prevent unauthorized access
-const SEED_SECRET = process.env.SEED_SECRET || 'vendly-seed-2026'
+const SEED_SECRET = 'vendly-seed-2026'
 
 export async function GET(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get('secret')
@@ -62,4 +62,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }
+
 
